@@ -1,6 +1,6 @@
-# Travel Agency Backend
+# OrigenTours Backend
 
-Backend base para la operadora de turismo colombiana Aurora Travels. Construido con Node.js, Express y TypeScript, ofrece el flujo inicial para planificar viajes destacando los intereses, fechas, tipo de experiencia, número de viajeros y restricciones de los clientes.
+Backend base para la operadora de turismo colombiana OrigenTours. Construido con Node.js, Express y TypeScript, ofrece el flujo inicial para planificar viajes destacando los intereses, fechas, tipo de experiencia, número de viajeros y restricciones de los clientes.
 
 ---
 
@@ -244,7 +244,4 @@ Si Zod detecta errores se lanza un `HttpError` con detalles por campo; el fronte
 
 ---
 
-Made with ☕ por el equipo backend de Aurora Travels.
-
-
-# proyectoBack
+Made with ☕ por el equipo backend de OrigenTours.
