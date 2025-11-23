@@ -2,6 +2,8 @@
 
 Backend base para la operadora de turismo colombiana OrigenTours. Construido con Node.js, Express y TypeScript, ofrece el flujo inicial para planificar viajes destacando los intereses, fechas, tipo de experiencia, número de viajeros y restricciones de los clientes.
 
+> 📚 **Documentación de Arquitectura**: Para más detalles sobre la arquitectura del sistema, consulta la [documentación completa de arquitectura](../../ARQUITECTURA.md) y la [arquitectura específica del backend](../../ARQUITECTURA_BACKEND.md).
+
 ---
 
 ## Tabla de contenido
@@ -32,6 +34,8 @@ Backend base para la operadora de turismo colombiana OrigenTours. Construido con
   - Pino + pino-http para logging
   - Jest + Supertest para pruebas
   - TSX para desarrollo en caliente
+- **Base de Datos:** Neo4j (base de datos de grafos)
+  - Driver: `neo4j-driver` (ver [docs/NEO4J_INTEGRATION.md](./docs/NEO4J_INTEGRATION.md))
 
 > 💡 En Windows se recomienda ejecutar los comandos con **Git Bash** para evitar restricciones de PowerShell al momento de correr `npm` o scripts shell.
 
@@ -63,7 +67,8 @@ env/                     # Plantillas de variables de entorno
 
 ### Decisiones clave
 - **Validación robusta** con Zod para asegurar datos coherentes antes de llegar a la capa de dominio.
-- **Repositorio en memoria** (`InMemorySessionRepository`) listo para sustituirse por una base de datos real sin modificar el controlador.
+- **Patrón Repository** que permite cambiar entre implementaciones (memoria, Neo4j) sin modificar las capas superiores.
+- **Base de datos de grafos (Neo4j)** para modelar relaciones complejas entre entidades (usuarios, sesiones, experiencias, destinos).
 - **Logging estructurado** con Pino y formateo legible en entornos no productivos.
 - **Manejo de errores unificado** mediante `HttpError` y un `errorHandler` central.
 
@@ -77,8 +82,14 @@ env/                     # Plantillas de variables de entorno
    - `NODE_ENV`: `development` | `test` | `production`
    - `PORT`: Puerto HTTP (por defecto 3000)
    - `LOG_LEVEL`: `fatal` | `error` | `warn` | `info` | `debug` | `trace`
+   - `NEO4J_URI`: URI de conexión a Neo4j (por defecto `bolt://localhost:7687`)
+   - `NEO4J_USER`: Usuario de Neo4j (por defecto `neo4j`)
+   - `NEO4J_PASSWORD`: Contraseña de Neo4j (requerida)
+   - `NEO4J_DATABASE`: Base de datos de Neo4j (por defecto `neo4j`)
 
 Las variables se validan con Zod durante el arranque. Si falta alguna obligatoria, la aplicación se detiene con un mensaje claro.
+
+> 📖 Para más detalles sobre la integración con Neo4j, consulta [docs/NEO4J_INTEGRATION.md](./docs/NEO4J_INTEGRATION.md).
 
 ## Instalación y ejecución
 
@@ -220,13 +231,45 @@ Para simular un invitado, omite `usuarioId`.
   ```
 - Antes de un pipeline CI/CD ejecutar `npm run build` para garantizar que los tipos y el código compilan correctamente.
 
+## Base de Datos Neo4j
+
+El sistema utiliza **Neo4j** como base de datos de grafos para almacenar y relacionar entidades del dominio:
+
+- **Nodos**: Usuario, Sesion, Interes, Restriccion, Itinerario, Experiencia, Destino, Cotizacion
+- **Relaciones**: Modelan las conexiones entre entidades (CREA, TIENE_INTERES, GENERA, etc.)
+
+### Integración
+
+- **Repositorio actual**: `InMemorySessionRepository` (desarrollo/testing)
+- **Repositorio de producción**: `Neo4jSessionRepository` (ver [docs/NEO4J_INTEGRATION.md](./docs/NEO4J_INTEGRATION.md))
+- **Schema**: Consulta el modelo de datos en [ARQUITECTURA.md](../../ARQUITECTURA.md#modelo-de-datos-en-grafo)
+
+### Visualización del Schema
+
+El schema de Neo4j puede visualizarse en:
+- **Arrows.app**: Importa `neo4j-schema-simple.arrows` desde la raíz del proyecto
+- **Neo4j Browser**: Ejecuta los scripts en `docs/neo4j-schema-cypher.cypher`
+
+## Despliegue
+
+El backend está diseñado para desplegarse en **Kubernetes** mediante contenedores Docker:
+
+- **Contenedorización**: Imagen Docker optimizada con Node.js Alpine
+- **Kubernetes**: Deployments, Services y ConfigMaps para orquestación
+- **Health Checks**: Endpoint `/health` para verificación de estado
+- **Escalabilidad**: Horizontal Pod Autoscaler (HPA) configurado
+
+> 📖 Para más detalles sobre la arquitectura de despliegue, consulta [ARQUITECTURA_DESPLIEGUE.md](../../ARQUITECTURA_DESPLIEGUE.md).
+
 ## Roadmap inicial
 
-- [ ] Integrar una base de datos real para almacenar sesiones.
-- [ ] Añadir autenticación/OAuth para usuarios registrados.
-- [ ] Exponer catálogo de experiencias turísticas.
-- [ ] Implementar motor de recomendaciones personalizadas.
-- [ ] Gestionar itinerarios, cotizaciones y pagos.
+- [x] Arquitectura modular con separación de capas
+- [x] Integración con Neo4j (preparada)
+- [ ] Implementar `Neo4jSessionRepository` en producción
+- [ ] Añadir autenticación/OAuth para usuarios registrados
+- [ ] Exponer catálogo de experiencias turísticas
+- [ ] Implementar motor de recomendaciones personalizadas
+- [ ] Gestionar itinerarios, cotizaciones y pagos
 
 ## FAQ
 
@@ -237,7 +280,7 @@ Modifica `PORT` en `.env` o exporta la variable antes de iniciar: `PORT=4000 npm
 Sí, ajusta `LOG_LEVEL`; en desarrollo suele usarse `debug`.
 
 **¿Dónde reemplazo la persistencia?**  
-Implementa la interfaz `SessionRepository` con la base de datos de tu elección y pásala al `SessionService` durante la construcción del router.
+Implementa la interfaz `SessionRepository` con la base de datos de tu elección y pásala al `SessionService` durante la construcción del router. Para Neo4j, consulta [docs/NEO4J_INTEGRATION.md](./docs/NEO4J_INTEGRATION.md) donde encontrarás una implementación completa de `Neo4jSessionRepository`.
 
 **¿Qué pasa con la validación?**  
 Si Zod detecta errores se lanza un `HttpError` con detalles por campo; el frontend debe apoyarse en `details` para mostrar mensajes amigables.
